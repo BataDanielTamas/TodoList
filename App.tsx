@@ -1,20 +1,16 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect } from "react";
+import { HomeScreen } from "./src/screens/HomeScreen";
+import { StoreProvider } from "./src/stores/StoreContext";
+import { rootStore } from "./src/stores/rootStore";
 
 export default function App() {
+  useEffect(() => {
+    rootStore.todoStore.hydrate();
+  }, []);
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <StoreProvider value={rootStore}>
+      <HomeScreen />
+    </StoreProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
