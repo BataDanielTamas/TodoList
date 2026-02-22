@@ -1,127 +1,144 @@
-import { makeAutoObservable, reaction } from "mobx";
+import { observable, action, computed, reaction, makeObservable } from "mobx";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { RootStore } from "./rootStore";
-
-
-export type Todo = {
-  id: string;
-  title: string;
-  done: boolean;
-};
+import { TodoItem } from "./todoItem";
 
 export type TodoFilter = "all" | "active" | "done";
 
+const STORAGE_KEY = "rn-mobx-demo/todos/v1";
+
 export class TodoStore {
-  private disposer?: () => void;
-  rootStore: RootStore;
-  todos: Todo[] = [];
-  filter: TodoFilter = "all";
-  private storageKey = "rn-mobx-demo/todos/v1";
-  hydrated = false;
+  @observable todos: TodoItem[] = [];
+  @observable filter: TodoFilter = "all";
+  @observable hydrated = false;
+  @observable inputText = "";
+  @observable inputBusy = false;
 
-  
+  constructor() {
+    makeObservable(this);
 
-  constructor(rootStore: RootStore) {
-    this.rootStore = rootStore;
-    makeAutoObservable(this);
-
-    // automatikus mentés minden releváns változásra
-    
+    // Auto-persist on any observable change, debounced 300 ms
+    reaction(
+      () => ({
+        todos: this.todos.map((t) => t.toJSON()),
+        filter: this.filter,
+      }),
+      () => this.persist(),
+      { delay: 300 }
+    );
   }
-  
 
-  get totalCount() {
+  // ── Computed ──────────────────────────────────────────────
+
+  @computed get totalCount() {
     return this.todos.length;
   }
 
-  get completedCount() {
-    return this.todos.filter(t => t.done).length;
+  @computed get completedCount() {
+    return this.todos.filter((t) => t.done).length;
   }
 
-  get activeCount() {
-    return this.todos.filter(t => !t.done).length;
+  @computed get activeCount() {
+    return this.todos.filter((t) => !t.done).length;
   }
 
-  get completionRate() {
+  @computed get completionRate() {
     if (this.todos.length === 0) return 0;
     return Math.round((this.completedCount / this.todos.length) * 100);
   }
 
-  get filteredTodos() {
+  @computed get filteredTodos(): TodoItem[] {
     switch (this.filter) {
       case "active":
-        return this.todos.filter(t => !t.done);
+        return this.todos.filter((t) => !t.done);
       case "done":
-        return this.todos.filter(t => t.done);
+        return this.todos.filter((t) => t.done);
       default:
         return this.todos;
     }
   }
 
+  // ── Actions ───────────────────────────────────────────────
 
-  setFilter(filter: TodoFilter) {
+  @action setFilter = (filter: TodoFilter) => {
     this.filter = filter;
-  }
+  };
 
-  addTodo(title: string) {
+  @action setInputText = (text: string) => {
+    this.inputText = text;
+  };
+
+  @action submitInput = () => {
+    if (this.inputBusy || !this.inputText.trim()) return;
+    this.inputBusy = true;
+    this.todos.push(new TodoItem(Date.now().toString(), this.inputText.trim()));
+    this.inputText = "";
+    setTimeout(() => { this.inputBusy = false; }, 200);
+  };
+
+  @action addTodo = (title: string) => {
     if (!title.trim()) return;
-    
-    this.todos.push({
-      id: Date.now().toString(),
-      title,
-      done: false,
-    });
-  }
+    this.todos.push(new TodoItem(Date.now().toString(), title.trim()));
+  };
 
-  toggleTodo(id: string) {
-    const todo = this.todos.find(t => t.id === id);
-    if (todo) todo.done = !todo.done;
-  }
+  @action removeTodo = (id: string) => {
+    this.todos = this.todos.filter((t) => t.id !== id);
+  };
 
-  removeTodo(id: string) {
-    this.todos = this.todos.filter(t => t.id !== id);
-  }
+  @action clearCompleted = () => {
+    this.todos = this.todos.filter((t) => !t.done);
+  };
 
-  clearCompleted() {
-    this.todos = this.todos.filter(t => !t.done);
-  }
+  @action private setHydrated = (value: boolean) => {
+    this.hydrated = value;
+  };
 
-   async hydrate() {
-  try {
-    const raw = await AsyncStorage.getItem(this.storageKey);
-    if (!raw) return;
+  @action private setTodos = (items: TodoItem[]) => {
+    this.todos = items;
+  };
 
-    const parsed = JSON.parse(raw) as {
-      todos: Todo[];
-      filter: TodoFilter;
-    };
+  // ── Persistence ───────────────────────────────────────────
 
-    this.todos = parsed.todos ?? [];
-    this.filter = parsed.filter ?? "all";
-  } catch {
-    this.todos = [];
-    this.filter = "all";
-  } finally {
-    this.hydrated = true;
-  }
-}
-  async persist() {
+  hydrate = async () => {
     try {
-      const payload = JSON.stringify({
-        todos: this.todos,
-        filter: this.filter,
-      });
-
-      await AsyncStorage.setItem(this.storageKey, payload);
-    } catch (e) {
-      // itt lehetne logolni / Sentry
+      const raw = await AsyncStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as {
+          todos: { id: string; title: string; done: boolean }[];
+          filter: TodoFilter;
+        };
+        this.setTodos(
+          (parsed.todos ?? []).map((t) => new TodoItem(t.id, t.title, t.done))
+        );
+        this.setFilter(parsed.filter ?? "all");
+      }
+    } catch {
+      this.setTodos([]);
+      this.setFilter("all");
+    } finally {
+      this.setHydrated(true);
     }
-  }
+  };
 
-  async clearStorage() {
-    await AsyncStorage.removeItem(this.storageKey);
-    this.todos = [];
-    this.filter = "all";
-  }
+  persist = async () => {
+    try {
+      await AsyncStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          todos: this.todos.map((t) => t.toJSON()),
+          filter: this.filter,
+        })
+      );
+    } catch {
+      // log / Sentry
+    }
+  };
 
+  clearStorage = async () => {
+    await AsyncStorage.removeItem(STORAGE_KEY);
+    this.setTodos([]);
+    this.setFilter("all");
+  };
 }
+
+const inst = new TodoStore();
+export default inst;
