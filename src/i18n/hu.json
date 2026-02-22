@@ -1,0 +1,16 @@
+{
+  "app.loading": "Betöltés…",
+  "todo.title": "Teendők",
+  "todo.stats": "Összes: {total} • Aktív: {active} • Kész: {completed} • {rate}%",
+  "todo.filter.all": "Összes",
+  "todo.filter.active": "Aktív",
+  "todo.filter.done": "Kész",
+  "todo.clearCompleted": "Kész feladatok törlése",
+  "todo.inputPlaceholder": "Új feladat…",
+  "todo.add": "Add",
+  "todo.empty.all": "Még nincs feladatod.",
+  "todo.empty.active": "Nincs aktív feladat.",
+  "todo.empty.done": "Nincs kész feladat.",
+  "todo.clearStorage": "Összes adat törlése",
+  "todo.delete": "✕"
+}

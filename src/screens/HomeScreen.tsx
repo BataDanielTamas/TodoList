@@ -1,19 +1,12 @@
 import React from "react";
 import { SafeAreaView, FlatList, StyleSheet } from "react-native";
-import { TodoList } from "../components/TodoList";
-import { theme } from "../styles/theme";
+import TodoList from "@/components/TodoList/index";
+import { theme } from "@/styles/theme";
 
 export const HomeScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
-      <FlatList
-        data={[1]} // dummy elem, hogy legyen "body"
-        keyExtractor={() => "home"}
-        renderItem={() => <TodoList />}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      />
+      <TodoList />
     </SafeAreaView>
   );
 };

@@ -10,16 +10,15 @@ type Props = {
   onRemove: () => void;
 };
 
-export const TodoItem = observer(({ todo, onRemove }: Props) => (
+const TodoItem = observer(({ todo, onRemove }: Props) => (
   <View style={styles.row}>
     <Pressable onPress={todo.toggle} style={styles.titleWrap}>
-      <Text style={[styles.title, todo.done && styles.done]}>
-        {todo.title}
-      </Text>
+      <Text style={[styles.title, todo.done && styles.done]}>{todo.title}</Text>
     </Pressable>
-
     <Pressable onPress={onRemove}>
       <Text style={styles.delete}>{t("todo.delete")}</Text>
     </Pressable>
   </View>
 ));
+
+export default TodoItem;
